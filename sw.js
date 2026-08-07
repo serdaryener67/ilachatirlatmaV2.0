@@ -1,6 +1,6 @@
 // İlaç Hatırlatıcı - Service Worker
 // index.html'i güncellersen CACHE_NAME'i değiştir (v1 -> v2), yoksa eski sürüm önbellekte kalır.
-const CACHE_NAME = "ilac-hatirlatici-v3";
+const CACHE_NAME = "ilac-hatirlatici-v4";
 const ASSETS = [
   "./",
   "./index.html",
