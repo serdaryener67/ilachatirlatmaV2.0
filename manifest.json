@@ -1,0 +1,25 @@
+{
+  "name": "İlaç Hatırlatıcı",
+  "short_name": "İlaç Hatırlatıcı",
+  "description": "Çoklu ilaç ve saat takibi, alma kaydı ve alarm entegrasyonu.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0A1220",
+  "theme_color": "#0A1220",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

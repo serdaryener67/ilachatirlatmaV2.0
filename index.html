@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A1220" id="themeColorMeta">
+<title>İlaç Hatırlatıcı</title>
+<style>
+  :root{
+    --bg:#0A1220;
+    --panel:#111B2E;
+    --panel-2:#16233A;
+    --border:#233350;
+    --text:#EAF0F8;
+    --text-dim:#8A9AB8;
+    --accent:#4A7FC8;
+    --accent-bright:#6FA3EA;
+    --amber:#C8934A;
+    --danger:#C0574C;
+    --danger-bright:#D66C60;
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --sans: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  body.light{
+    --bg:#F4F7FC; --panel:#FFFFFF; --panel-2:#EDF2FA; --border:#D6E0EF;
+    --text:#101A2C; --text-dim:#5B6B85; --accent:#2F5FA8; --accent-bright:#3E72C2;
+  }
+  body.light .dose-card, body.light .med-card{ background:#EEF3FB; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+    -webkit-user-select:none; user-select:none;
+    padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+  }
+  input,textarea{ -webkit-user-select:text; user-select:text; }
+  ::selection{ background:var(--accent); color:#FFFFFF; }
+  button{ font-family:var(--sans); cursor:pointer; }
+
+  header.topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:18px 18px 14px; position:sticky; top:0; background:var(--bg); z-index:5;
+  }
+  header.topbar h1{ font-family:var(--serif); font-weight:400; font-size:21px; margin:0; }
+  .icon-btn{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--text-dim);
+    width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn svg{ width:18px; height:18px; fill:currentColor; }
+
+  .adherence-card{
+    margin:0 18px 14px; background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:14px 16px; display:flex; align-items:center; gap:14px;
+  }
+  .adherence-ring{
+    width:52px; height:52px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; color:var(--accent-bright);
+    background:conic-gradient(var(--accent-bright) calc(var(--pct,0)*1%), var(--border) 0);
+  }
+  .adherence-ring::before{
+    content:attr(data-pct); width:40px; height:40px; border-radius:50%; background:var(--panel);
+    display:flex; align-items:center; justify-content:center; font-size:12px;
+  }
+  .adherence-text{ font-size:12.5px; color:var(--text-dim); line-height:1.5; }
+  .adherence-text b{ color:var(--text); font-weight:600; }
+
+  .tabs{ display:flex; gap:6px; padding:0 18px 14px; }
+  .tab{
+    flex:1; text-align:center; padding:10px 4px; border-radius:10px; border:1px solid var(--border);
+    background:var(--panel); color:var(--text-dim); font-size:12.5px; font-weight:600;
+  }
+  .tab.active{ background:rgba(74,127,200,.18); border-color:var(--accent); color:var(--accent-bright); }
+
+  #today, #meds, #archive{ padding:0 18px 100px; display:flex; flex-direction:column; gap:10px; }
+  #meds, #archive{ display:none; }
+  .empty{ margin-top:60px; text-align:center; color:var(--text-dim); font-size:13.5px; line-height:1.7; }
+
+  .section-label{ font-size:11px; color:var(--text-dim); letter-spacing:.06em; text-transform:uppercase; margin:10px 2px 0; font-weight:600; }
+  .section-label:first-child{ margin-top:0; }
+
+  /* ---------- today schedule card ---------- */
+  .dose-card{
+    background:var(--panel); border:1px solid var(--border); border-left-width:4px; border-radius:12px;
+    padding:13px 15px; display:flex; align-items:center; gap:12px; transition:opacity .2s, transform .2s;
+  }
+  .dose-card.taken{ opacity:.55; }
+  .dose-time-wrap{ display:flex; flex-direction:column; align-items:flex-start; flex:0 0 auto; width:56px; transform:translateY(-2px); }
+  .dose-time{ font-family:var(--mono); font-size:15px; font-weight:600; line-height:1.15; }
+  .dose-date{ font-size:10px; color:var(--text-dim); margin-top:3px; letter-spacing:.02em; }
+  .dose-info{ flex:1; min-width:0; }
+  .dose-name{ font-size:14.5px; font-weight:600; }
+  .dose-dose{ font-size:12px; color:var(--text-dim); margin-top:1px; }
+  .dose-actions{ display:flex; gap:6px; flex:0 0 auto; }
+  .check-btn{
+    width:36px; height:36px; border-radius:10px; border:1px solid var(--border); background:var(--panel-2);
+    color:var(--text-dim); display:flex; align-items:center; justify-content:center;
+  }
+  .check-btn.on{ background:var(--accent); border-color:var(--accent); color:#FFFFFF; }
+  .check-btn svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+  .alarm-btn{
+    width:36px; height:36px; border-radius:10px; border:1px solid var(--border); background:var(--panel-2); color:var(--amber);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .alarm-btn svg{ width:17px; height:17px; fill:currentColor; }
+
+  /* ---------- archive ---------- */
+  .archive-day{ background:var(--panel); border:1px solid var(--border); border-left:4px solid var(--danger); border-radius:12px; padding:13px 15px; }
+  .archive-date{ font-size:13.5px; font-weight:600; }
+  .archive-miss-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .archive-miss-chip{ font-size:11.5px; padding:5px 10px; border-radius:999px; background:var(--panel-2); border:1px solid var(--border); color:var(--danger-bright); }
+
+  /* ---------- stock (kutu takibi) ---------- */
+  .stock-banner{
+    margin:0 18px 14px; background:rgba(200,147,74,.14); border:1px solid var(--amber); border-radius:14px;
+    padding:12px 16px; font-size:12.5px; color:var(--text); line-height:1.6;
+  }
+  .stock-banner b{ color:var(--amber); }
+  .stock-chip{ font-size:11px; padding:3px 9px; border-radius:999px; background:var(--panel-2); border:1px solid var(--border); color:var(--text-dim); }
+  .stock-chip.low{ color:var(--amber); border-color:var(--amber); }
+  .stock-chip.empty{ color:var(--danger-bright); border-color:var(--danger-bright); }
+
+  /* ---------- med management card ---------- */
+  .med-card{
+    background:var(--panel); border:1px solid var(--border); border-left-width:4px; border-radius:12px; padding:14px 16px;
+  }
+  .med-top{ display:flex; align-items:flex-start; gap:12px; }
+  .med-badge{
+    width:36px; height:36px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    font-family:var(--serif); font-size:13px; font-weight:600; color:#FFFFFF;
+  }
+  .med-top-text{ flex:1; min-width:0; }
+  .med-name{ font-size:15px; font-weight:600; }
+  .med-dose{ font-size:12px; color:var(--text-dim); margin-top:1px; }
+  .med-times{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .med-time-chip{ font-family:var(--mono); font-size:12px; padding:4px 9px; border-radius:999px; background:var(--panel-2); border:1px solid var(--border); }
+  .med-stock-row{ display:flex; align-items:center; gap:8px; margin-top:10px; }
+  .med-actions{ display:flex; gap:10px; margin-top:12px; }
+  .med-actions button{ flex:1; background:var(--panel-2); border:1px solid var(--border); color:var(--text-dim); padding:8px; border-radius:8px; font-size:12.5px; }
+  .med-actions button.del{ color:var(--danger-bright); }
+
+  .fab{
+    position:fixed; right:20px; bottom:26px; width:56px; height:56px; border-radius:50%;
+    background:var(--accent); border:none; box-shadow:0 8px 24px rgba(74,127,200,.4);
+    display:flex; align-items:center; justify-content:center; z-index:6;
+  }
+  .fab svg{ width:24px; height:24px; fill:#FFFFFF; }
+
+  /* ---------- modal ---------- */
+  .overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:20; align-items:flex-end; justify-content:center; }
+  .sheet{ background:var(--panel); border-top:1px solid var(--border); border-radius:18px 18px 0 0; width:100%; max-width:520px; max-height:88vh; overflow-y:auto; padding:20px 20px calc(24px + env(safe-area-inset-bottom)); }
+  .sheet h2{ font-family:var(--serif); font-weight:400; font-size:19px; margin:0 0 16px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; letter-spacing:.03em; }
+  input[type=text], input[type=time], textarea{
+    width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    padding:12px 14px; border-radius:10px; font-size:15px; font-family:var(--sans); outline:none;
+  }
+  input:focus, textarea:focus{ border-color:var(--accent); }
+  .times-list{ display:flex; flex-direction:column; gap:8px; }
+  .time-row{ display:flex; gap:8px; align-items:center; }
+  .time-row input{ flex:1; }
+  .time-row button{ background:var(--panel-2); border:1px solid var(--border); color:var(--danger-bright); width:40px; height:40px; border-radius:9px; flex:0 0 auto; }
+  .add-time-btn{ background:none; border:1px dashed var(--border); color:var(--accent-bright); padding:9px; border-radius:9px; font-size:12.5px; margin-top:4px; width:100%; }
+  .btn{ width:100%; padding:13px; border-radius:10px; border:none; background:var(--accent); color:#FFFFFF; font-weight:600; font-size:15px; }
+  .btn.ghost{ background:transparent; border:1px solid var(--border); color:var(--text-dim); font-weight:500; }
+  .sheet-actions{ display:flex; gap:10px; margin-top:6px; }
+  .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--panel-2); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:999px; font-size:13px; z-index:40; opacity:0; pointer-events:none; transition:opacity .2s; }
+  .toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>İlaç Hatırlatıcı</h1>
+  <div style="display:flex; gap:8px;">
+    <button class="icon-btn" id="themeToggle" title="Tema"></button>
+    <button class="icon-btn" id="notifBtn" title="Bildirim izni">
+      <svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6v-5a7 7 0 0 0-5-6.71V4a2 2 0 1 0-4 0v.29A7 7 0 0 0 5 11v5l-1.5 1.5V18h17v-1.5z"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="stock-banner" id="stockBanner" style="display:none;"></div>
+
+<div class="adherence-card" id="adherenceCard" style="display:none;">
+  <div class="adherence-ring" id="adherenceRing" data-pct="0%" style="--pct:0"></div>
+  <div class="adherence-text">Son 7 gün<br><b id="adherenceLabel">Henüz veri yok</b></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" id="tabToday">Bugün</button>
+  <button class="tab" id="tabMeds">İlaçlarım</button>
+  <button class="tab" id="tabArchive">Geçmiş</button>
+</div>
+
+<div id="today"></div>
+<div id="meds"></div>
+<div id="archive"></div>
+
+<button class="fab" id="addBtn"><svg viewBox="0 0 24 24"><path d="M11 5a1 1 0 1 1 2 0v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5z"/></svg></button>
+
+<!-- Add/Edit Sheet -->
+<div class="overlay" id="editOverlay">
+  <div class="sheet">
+    <h2 id="sheetTitle">Yeni İlaç</h2>
+    <div class="field">
+      <label>İlaç Adı</label>
+      <input type="text" id="nameInput" placeholder="Örn: Tansiyon İlacı">
+    </div>
+    <div class="field">
+      <label>Doz (opsiyonel)</label>
+      <input type="text" id="doseInput" placeholder="Örn: 1 tablet, 5mg">
+    </div>
+    <div class="field">
+      <label>Alma Saatleri</label>
+      <div class="times-list" id="timesList"></div>
+      <button class="add-time-btn" id="addTimeBtn" type="button">+ Saat Ekle</button>
+    </div>
+    <div class="field">
+      <label>Not (opsiyonel)</label>
+      <textarea id="notesInput" rows="2" placeholder="Örn: Yemekten sonra"></textarea>
+    </div>
+    <div class="field">
+      <label>Kutu Büyüklüğü (kaç adet hap var?)</label>
+      <input type="text" inputmode="numeric" id="boxSizeInput" placeholder="Örn: 28">
+    </div>
+    <div class="field" id="stockFieldWrap">
+      <label>Kalan Adet</label>
+      <input type="text" inputmode="numeric" id="stockInput" placeholder="Örn: 28">
+      <button class="add-time-btn" id="newBoxBtn" type="button" style="margin-top:8px;">📦 Yeni kutuya başlıyorum</button>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn ghost" id="cancelEditBtn">Vazgeç</button>
+      <button class="btn" id="saveMedBtn">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const LS_MEDS = "ilac_meds_v1";
+  const LS_LOGS = "ilac_logs_v1"; // { "YYYY-MM-DD": { "medId|HH:MM": true } }
+
+  const COLOR_PALETTE = ["#4EA671","#4A79C8","#C8934A","#C8514A","#8A7AC8","#4AA8A0","#C84A8E","#B8A93C"];
+  function hashStr(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return Math.abs(h); }
+  function medColor(name){ return COLOR_PALETTE[hashStr(name) % COLOR_PALETTE.length]; }
+  function initials(name){
+    const words = (name||"").trim().split(/\s+/).filter(Boolean);
+    if(words.length===0) return "?";
+    if(words.length===1) return words[0].slice(0,2).toLocaleUpperCase('tr-TR');
+    return (words[0][0]+words[1][0]).toLocaleUpperCase('tr-TR');
+  }
+  function todayKey(d){
+    d = d || new Date();
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  function uuid(){ return crypto.randomUUID(); }
+
+  let meds = JSON.parse(localStorage.getItem(LS_MEDS) || "[]");
+  let logs = JSON.parse(localStorage.getItem(LS_LOGS) || "{}");
+  let editingId = null;
+  let activeTab = "today";
+
+  function persist(){
+    localStorage.setItem(LS_MEDS, JSON.stringify(meds));
+    localStorage.setItem(LS_LOGS, JSON.stringify(logs));
+  }
+
+  function toast(msg){
+    const t = $("toast");
+    t.textContent = msg; t.classList.add("show");
+    setTimeout(()=>t.classList.remove("show"), 1800);
+  }
+
+  /* ---------------- theme ---------------- */
+  const THEME_KEY = "ilac_theme_v1";
+  const SUN_ICON = '<svg viewBox="0 0 24 24"><path d="M12 4a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V5a1 1 0 0 1 1-1zm0 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm8 4a1 1 0 0 1-1 1h-1a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1zM5 12a1 1 0 0 1-1 1H3a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1zm12.36 6.36a1 1 0 0 1-1.41 0l-.71-.71a1 1 0 1 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41zM7.76 8.05a1 1 0 0 1-1.41 0l-.71-.71A1 1 0 1 1 7.05 5.93l.71.71a1 1 0 0 1 0 1.41zm9.9-2.12a1 1 0 0 1 0 1.41l-.71.71a1 1 0 1 1-1.41-1.41l.71-.71a1 1 0 0 1 1.41 0zM7.05 18.07a1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1-1.41 0zM12 18a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1z"/></svg>';
+  const MOON_ICON = '<svg viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 0 1 8.646 3.646 9.003 9.003 0 1 0 20.354 15.354z"/></svg>';
+  function getTheme(){ return localStorage.getItem(THEME_KEY) || "dark"; }
+  function applyTheme(theme){
+    document.body.classList.toggle("light", theme === "light");
+    $("themeToggle").innerHTML = theme === "light" ? MOON_ICON : SUN_ICON;
+    $("themeColorMeta").setAttribute("content", theme === "light" ? "#F4F7FC" : "#0A1220");
+  }
+  $("themeToggle").addEventListener("click", ()=>{
+    const next = getTheme() === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+  applyTheme(getTheme());
+
+  /* ---------------- tabs ---------------- */
+  $("tabToday").addEventListener("click", ()=>{ activeTab="today"; renderTabs(); });
+  $("tabMeds").addEventListener("click", ()=>{ activeTab="meds"; renderTabs(); });
+  $("tabArchive").addEventListener("click", ()=>{ activeTab="archive"; renderTabs(); });
+  function renderTabs(){
+    $("tabToday").classList.toggle("active", activeTab==="today");
+    $("tabMeds").classList.toggle("active", activeTab==="meds");
+    $("tabArchive").classList.toggle("active", activeTab==="archive");
+    $("today").style.display = activeTab==="today" ? "flex" : "none";
+    $("meds").style.display = activeTab==="meds" ? "flex" : "none";
+    $("archive").style.display = activeTab==="archive" ? "flex" : "none";
+    if(activeTab==="today") renderToday();
+    else if(activeTab==="meds") renderMeds();
+    else renderArchive();
+    renderStockBanner();
+  }
+
+  /* ---------------- today schedule ---------------- */
+  function todaysDoses(){
+    const list = [];
+    meds.forEach(m=>{
+      (m.times||[]).forEach(t=>{
+        list.push({ medId:m.id, name:m.name, dose:m.dose, time:t, color: medColor(m.name) });
+      });
+    });
+    list.sort((a,b)=> a.time.localeCompare(b.time));
+    return list;
+  }
+
+  function isTaken(medId, time){
+    const key = todayKey();
+    return !!(logs[key] && logs[key][medId+"|"+time]);
+  }
+  function setTaken(medId, time, val){
+    const key = todayKey();
+    if(!logs[key]) logs[key] = {};
+    const wasTaken = !!logs[key][medId+"|"+time];
+    if(val) logs[key][medId+"|"+time] = true;
+    else delete logs[key][medId+"|"+time];
+
+    let stockWarning = null;
+    if(val !== wasTaken){
+      const m = meds.find(x=>x.id===medId);
+      if(m && m.boxSize){
+        if(typeof m.stock !== "number") m.stock = m.boxSize;
+        m.stock = val ? Math.max(0, m.stock - 1) : Math.min(m.boxSize, m.stock + 1);
+        if(val && m.stock <= 3){
+          stockWarning = m.stock === 0
+            ? `${m.name}: kutu bitti! Yeni kutu almayı unutma`
+            : `${m.name}: sadece ${m.stock} hap kaldı`;
+        }
+      }
+    }
+    persist();
+    return stockWarning;
+  }
+  function formatDateShort(d){
+    d = d || new Date();
+    return d.toLocaleDateString('tr-TR', { day:'numeric', month:'short' });
+  }
+
+  function renderToday(){
+    const list = $("today");
+    const doses = todaysDoses();
+    list.innerHTML = "";
+    if(doses.length === 0){
+      list.innerHTML = '<div class="empty">Henüz ilaç eklenmedi.<br>Sağ alttaki + ile ilk ilacını ekle.</div>';
+      renderAdherence();
+      return;
+    }
+    doses.forEach(d=>{
+      const taken = isTaken(d.medId, d.time);
+      const card = document.createElement("div");
+      card.className = "dose-card" + (taken ? " taken" : "");
+      card.style.borderLeftColor = d.color;
+      card.innerHTML = `
+        <div class="dose-time-wrap">
+          <div class="dose-time">${d.time}</div>
+          <div class="dose-date">${formatDateShort()}</div>
+        </div>
+        <div class="dose-info">
+          <div class="dose-name">${escapeHtml(d.name)}</div>
+          ${d.dose ? `<div class="dose-dose">${escapeHtml(d.dose)}</div>` : ""}
+        </div>
+        <div class="dose-actions">
+          <button class="alarm-btn" data-alarm title="Telefon alarmına ekle">${alarmIcon()}</button>
+          <button class="check-btn ${taken ? "on" : ""}" data-check title="Aldım">${checkIcon()}</button>
+        </div>
+      `;
+      card.querySelector("[data-check]").addEventListener("click", ()=>{
+        const newVal = !isTaken(d.medId, d.time);
+        const stockWarning = setTaken(d.medId, d.time, newVal);
+        renderToday();
+        renderStockBanner();
+        toast(stockWarning || (newVal ? "Alındı olarak işaretlendi ✓" : "İşaret kaldırıldı"));
+      });
+      card.querySelector("[data-alarm]").addEventListener("click", ()=> addNativeAlarm(d.name, d.time));
+      list.appendChild(card);
+    });
+    renderAdherence();
+  }
+
+  function checkIcon(){ return '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>'; }
+  function alarmIcon(){ return '<svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6v-5a7 7 0 0 0-5-6.71V4a2 2 0 1 0-4 0v.29A7 7 0 0 0 5 11v5l-1.5 1.5V18h17v-1.5z"/></svg>'; }
+  function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  /* ---------------- native alarm (Android intent) ---------------- */
+  function addNativeAlarm(name, time){
+    const [h, m] = time.split(":").map(Number);
+    const msg = encodeURIComponent(name + " - İlaç alma zamanı");
+    const fallback = encodeURIComponent(window.location.href.split("#")[0].split("?")[0]);
+    const uri = `intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=${h};i.android.intent.extra.alarm.MINUTES=${m};S.android.intent.extra.alarm.MESSAGE=${msg};S.browser_fallback_url=${fallback};end`;
+    try{
+      const a = document.createElement("a");
+      a.href = uri;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast("Saat uygulaması açılıyor, kaydetmeyi unutma");
+    } catch(e){
+      toast("Bu cihazda alarm açılamadı, manuel eklemen gerekebilir");
+    }
+  }
+
+  /* ---------------- stock banner ---------------- */
+  function renderStockBanner(){
+    const banner = $("stockBanner");
+    const low = meds.filter(m => m.boxSize && typeof m.stock === "number" && m.stock <= 3);
+    if(low.length === 0){ banner.style.display = "none"; return; }
+    banner.style.display = "block";
+    banner.innerHTML = low.map(m =>
+      `📦 <b>${escapeHtml(m.name)}</b>: ${m.stock === 0 ? "kutu bitti" : m.stock + " adet kaldı"}`
+    ).join("<br>");
+  }
+
+  /* ---------------- archive (kaçırılan dozlar) ---------------- */
+  function renderArchive(){
+    const list = $("archive");
+    list.innerHTML = "";
+    if(meds.length === 0){
+      list.innerHTML = '<div class="empty">Henüz ilaç eklenmedi.</div>';
+      return;
+    }
+    const days = [];
+    for(let i=1; i<=30; i++){
+      const d = new Date(); d.setDate(d.getDate()-i);
+      const key = todayKey(d);
+      const missed = [];
+      meds.forEach(m=>{
+        if(new Date(m.createdAt) > d) return;
+        (m.times||[]).forEach(t=>{
+          const wasTaken = !!(logs[key] && logs[key][m.id+"|"+t]);
+          if(!wasTaken) missed.push({ name:m.name, time:t });
+        });
+      });
+      if(missed.length > 0) days.push({ date:d, missed });
+    }
+    if(days.length === 0){
+      list.innerHTML = '<div class="empty">Harika! Son 30 günde kaçırılan doz yok. 🎉</div>';
+      return;
+    }
+    days.forEach(day=>{
+      const card = document.createElement("div");
+      card.className = "archive-day";
+      card.innerHTML = `
+        <div class="archive-date">${day.date.toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric', weekday:'long' })}</div>
+        <div class="archive-miss-row">
+          ${day.missed.map(x => `<span class="archive-miss-chip">${escapeHtml(x.name)} · ${x.time}</span>`).join("")}
+        </div>
+      `;
+      list.appendChild(card);
+    });
+  }
+  function renderAdherence(){
+    const card = $("adherenceCard");
+    if(meds.length === 0){ card.style.display = "none"; return; }
+    let total = 0, done = 0;
+    for(let i=0;i<7;i++){
+      const d = new Date(); d.setDate(d.getDate()-i);
+      const key = todayKey(d);
+      meds.forEach(m=>{
+        (m.times||[]).forEach(t=>{
+          // sadece ilacın eklendiği günden bugüne kadar say
+          if(new Date(m.createdAt) <= d){
+            total++;
+            if(logs[key] && logs[key][m.id+"|"+t]) done++;
+          }
+        });
+      });
+    }
+    if(total === 0){ card.style.display = "none"; return; }
+    const pct = Math.round((done/total)*100);
+    card.style.display = "flex";
+    $("adherenceRing").style.setProperty("--pct", pct);
+    $("adherenceRing").setAttribute("data-pct", pct+"%");
+    $("adherenceLabel").textContent = `${done}/${total} doz alındı (%${pct})`;
+  }
+
+  /* ---------------- meds management ---------------- */
+  function renderMeds(){
+    const list = $("meds");
+    list.innerHTML = "";
+    if(meds.length === 0){
+      list.innerHTML = '<div class="empty">Henüz ilaç eklenmedi.<br>Sağ alttaki + ile ilk ilacını ekle.</div>';
+      return;
+    }
+    meds.forEach(m=>{
+      const color = medColor(m.name);
+      const card = document.createElement("div");
+      card.className = "med-card";
+      card.style.borderLeftColor = color;
+      const hasStock = m.boxSize && typeof m.stock === "number";
+      const stockClass = hasStock ? (m.stock === 0 ? "empty" : (m.stock <= 3 ? "low" : "")) : "";
+      card.innerHTML = `
+        <div class="med-top">
+          <div class="med-badge" style="background:${color}">${escapeHtml(initials(m.name))}</div>
+          <div class="med-top-text">
+            <div class="med-name">${escapeHtml(m.name)}</div>
+            ${m.dose ? `<div class="med-dose">${escapeHtml(m.dose)}</div>` : ""}
+          </div>
+        </div>
+        <div class="med-times">
+          ${(m.times||[]).map(t=>`<span class="med-time-chip">${t}</span>`).join("")}
+        </div>
+        ${hasStock ? `<div class="med-stock-row"><span class="stock-chip ${stockClass}">📦 ${m.stock}/${m.boxSize} adet kaldı</span></div>` : ""}
+        <div class="med-actions">
+          <button data-edit>Düzenle</button>
+          <button class="del" data-del>Sil</button>
+        </div>
+      `;
+      card.querySelector("[data-edit]").addEventListener("click", ()=> openEditSheet(m.id));
+      card.querySelector("[data-del]").addEventListener("click", ()=>{
+        if(confirm(`"${m.name}" ilacını silmek istediğine emin misin?`)){
+          meds = meds.filter(x=>x.id!==m.id);
+          persist(); renderMeds(); renderStockBanner();
+          toast("İlaç silindi");
+        }
+      });
+      list.appendChild(card);
+    });
+  }
+
+  /* ---------------- add/edit sheet ---------------- */
+  const editOverlay = $("editOverlay");
+  function addTimeRow(value){
+    const row = document.createElement("div");
+    row.className = "time-row";
+    row.innerHTML = `<input type="time" value="${value||"08:00"}"><button type="button">✕</button>`;
+    row.querySelector("button").addEventListener("click", ()=>{
+      if($("timesList").children.length > 1) row.remove();
+      else toast("En az bir saat gerekli");
+    });
+    $("timesList").appendChild(row);
+  }
+  $("addTimeBtn").addEventListener("click", ()=> addTimeRow());
+
+  function openEditSheet(id){
+    editingId = id || null;
+    const m = id ? meds.find(x=>x.id===id) : null;
+    $("sheetTitle").textContent = m ? "İlacı Düzenle" : "Yeni İlaç";
+    $("nameInput").value = m ? m.name : "";
+    $("doseInput").value = m ? (m.dose||"") : "";
+    $("notesInput").value = m ? (m.notes||"") : "";
+    $("boxSizeInput").value = m && m.boxSize ? m.boxSize : "";
+    $("stockInput").value = m && typeof m.stock === "number" ? m.stock : "";
+    $("timesList").innerHTML = "";
+    if(m && m.times && m.times.length){ m.times.forEach(t=>addTimeRow(t)); }
+    else { addTimeRow("08:00"); }
+    editOverlay.style.display = "flex";
+  }
+  $("addBtn").addEventListener("click", ()=> openEditSheet(null));
+  $("cancelEditBtn").addEventListener("click", ()=> editOverlay.style.display = "none");
+
+  $("newBoxBtn").addEventListener("click", ()=>{
+    const boxSize = parseInt($("boxSizeInput").value, 10);
+    if(!boxSize || boxSize <= 0){ toast("Önce kutu büyüklüğünü gir"); return; }
+    $("stockInput").value = boxSize;
+    toast("Stok kutu büyüklüğüne sıfırlandı");
+  });
+
+  $("saveMedBtn").addEventListener("click", ()=>{
+    const name = $("nameInput").value.trim();
+    const dose = $("doseInput").value.trim();
+    const notes = $("notesInput").value.trim();
+    const times = [...$("timesList").querySelectorAll("input[type=time]")].map(i=>i.value).filter(Boolean);
+    const boxSizeRaw = parseInt($("boxSizeInput").value, 10);
+    const stockRaw = parseInt($("stockInput").value, 10);
+    const boxSize = boxSizeRaw > 0 ? boxSizeRaw : null;
+    const stock = boxSize ? (stockRaw >= 0 && !isNaN(stockRaw) ? Math.min(stockRaw, boxSize) : boxSize) : null;
+    if(!name){ toast("İlaç adı gerekli"); return; }
+    if(times.length === 0){ toast("En az bir saat ekle"); return; }
+    times.sort();
+    if(editingId){
+      const m = meds.find(x=>x.id===editingId);
+      Object.assign(m, { name, dose, notes, times, boxSize, stock });
+    } else {
+      meds.push({ id: uuid(), name, dose, notes, times, createdAt: Date.now(), boxSize, stock });
+    }
+    persist();
+    editOverlay.style.display = "none";
+    renderTabs();
+    toast("Kaydedildi");
+  });
+
+  /* ---------------- notifications (best-effort, app açıkken) ---------------- */
+  $("notifBtn").addEventListener("click", async ()=>{
+    if(!("Notification" in window)){ toast("Bu cihaz bildirimi desteklemiyor"); return; }
+    const perm = await Notification.requestPermission();
+    toast(perm === "granted" ? "Bildirim izni verildi" : "Bildirim izni reddedildi");
+  });
+  function checkDueReminders(){
+    if(!("Notification" in window) || Notification.permission !== "granted") return;
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,"0");
+    const mm = String(now.getMinutes()).padStart(2,"0");
+    const cur = hh+":"+mm;
+    todaysDoses().forEach(d=>{
+      if(d.time === cur && !isTaken(d.medId, d.time)){
+        try{
+          new Notification("İlaç Zamanı 💊", { body: d.name + (d.dose ? " — "+d.dose : ""), tag: d.medId+d.time });
+        }catch(e){}
+      }
+    });
+  }
+  setInterval(checkDueReminders, 30000);
+
+  renderTabs();
+})();
+</script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(function(){});
+    });
+  }
+</script>
+</body>
+</html>
