@@ -406,21 +406,15 @@
   function addNativeAlarm(name, time){
     const [h, m] = time.split(":").map(Number);
     const msg = encodeURIComponent(name + " - İlaç alma zamanı");
-    const fallback = encodeURIComponent(window.location.href.split("#")[0].split("?")[0]);
-    const uri = `intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=${h};i.android.intent.extra.alarm.MINUTES=${m};S.android.intent.extra.alarm.MESSAGE=${msg};S.browser_fallback_url=${fallback};end`;
+    const uri = `intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=${h};i.android.intent.extra.alarm.MINUTES=${m};S.android.intent.extra.alarm.MESSAGE=${msg};end`;
 
     let leftPage = false;
     const onHide = ()=>{ if(document.hidden) leftPage = true; };
     document.addEventListener("visibilitychange", onHide);
 
-    try{
-      const a = document.createElement("a");
-      a.href = uri;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch(e){}
+    // Yedek adres KASITLI OLARAK yok: intent çözülmezse tarayıcı hiçbir şey
+    // yapmaz (sayfa yeniden yüklenmez), böylece aşağıdaki zamanlayıcı bozulmaz.
+    try{ window.location.href = uri; } catch(e){}
 
     setTimeout(()=>{
       document.removeEventListener("visibilitychange", onHide);
