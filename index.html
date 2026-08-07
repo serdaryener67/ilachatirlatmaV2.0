@@ -166,7 +166,7 @@
   .btn{ width:100%; padding:13px; border-radius:10px; border:none; background:var(--accent); color:#FFFFFF; font-weight:600; font-size:15px; }
   .btn.ghost{ background:transparent; border:1px solid var(--border); color:var(--text-dim); font-weight:500; }
   .sheet-actions{ display:flex; gap:10px; margin-top:6px; }
-  .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--panel-2); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:999px; font-size:13px; z-index:40; opacity:0; pointer-events:none; transition:opacity .2s; }
+  .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--panel-2); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:16px; font-size:13px; z-index:40; opacity:0; pointer-events:none; transition:opacity .2s; max-width:calc(100% - 48px); text-align:center; line-height:1.5; }
   .toast.show{ opacity:1; }
 </style>
 </head>
@@ -272,10 +272,11 @@
     localStorage.setItem(LS_LOGS, JSON.stringify(logs));
   }
 
-  function toast(msg){
+  function toast(msg, duration){
     const t = $("toast");
     t.textContent = msg; t.classList.add("show");
-    setTimeout(()=>t.classList.remove("show"), 1800);
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(()=>t.classList.remove("show"), duration || 1800);
   }
 
   /* ---------------- theme ---------------- */
@@ -407,6 +408,11 @@
     const msg = encodeURIComponent(name + " - İlaç alma zamanı");
     const fallback = encodeURIComponent(window.location.href.split("#")[0].split("?")[0]);
     const uri = `intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=${h};i.android.intent.extra.alarm.MINUTES=${m};S.android.intent.extra.alarm.MESSAGE=${msg};S.browser_fallback_url=${fallback};end`;
+
+    let leftPage = false;
+    const onHide = ()=>{ if(document.hidden) leftPage = true; };
+    document.addEventListener("visibilitychange", onHide);
+
     try{
       const a = document.createElement("a");
       a.href = uri;
@@ -414,10 +420,14 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      toast("Saat uygulaması açılıyor, kaydetmeyi unutma");
-    } catch(e){
-      toast("Bu cihazda alarm açılamadı, manuel eklemen gerekebilir");
-    }
+    } catch(e){}
+
+    setTimeout(()=>{
+      document.removeEventListener("visibilitychange", onHide);
+      if(!leftPage){
+        toast(`Otomatik açılmadı — Saat uygulamasında manuel ekle: ${time}, "${name}"`, 4500);
+      }
+    }, 1200);
   }
 
   /* ---------------- stock banner ---------------- */
